@@ -6,11 +6,14 @@
 package bcccp.carpark.paystation;
 
 import bcccp.carpark.Carpark;
+import bcccp.carpark.ICarpark;
 import bcccp.tickets.adhoc.IAdhocTicketDAO;
 import bcccp.tickets.adhoc.AdhocTicketDAO;
 import bcccp.tickets.adhoc.AdhocTicketFactory;
 import bcccp.tickets.adhoc.IAdhocTicket;
+import bcccp.tickets.adhoc.AdhocTicket;
 import bcccp.tickets.season.ISeasonTicketDAO;
+import bcccp.tickets.season.IUsageRecordFactory;
 import bcccp.tickets.season.SeasonTicketDAO;
 import bcccp.tickets.season.UsageRecordFactory;
 
@@ -35,7 +38,7 @@ public class PaystationControllerTest {
     IAdhocTicket testTicket;
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
-    Carpark cp;
+    ICarpark cp;
     PaystationController PayController;
             
     public PaystationControllerTest() {
@@ -44,24 +47,15 @@ public class PaystationControllerTest {
         
     }
     
-    @BeforeClass
-    public static void setUpClass() {
-        
-        
-       
-        
-    }
-    
-    @AfterClass
-    public static void tearDownClass() {
-        
-        
-    }
+   
     
     @Before
-    public void setUp() {
-        cp = mock(Carpark.class);
-        testTicket = mock(IAdhocTicket.class);
+    public void setUp() throws Exception {
+        season = new SeasonTicketDAO(new UsageRecordFactory());
+        adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
+        
+        cp = new Carpark("TestCarPark", 5, adhoc, season);      
+        testTicket = cp.issueAdhocTicket();
         
         barcode = testTicket.getBarcode();
         
@@ -72,7 +66,7 @@ public class PaystationControllerTest {
     @After
     public void tearDown() {
         
-        
+        PayController = null;
         
     }
 
@@ -82,11 +76,11 @@ public class PaystationControllerTest {
     @Test
     public void testTicketInserted() {
         System.out.println("ticketInserted");
-         
+        
         PayController.ticketInserted(barcode);
         // TODO review the generated test code and remove the default call to fail.
         //fail("The test case is a prototype.");
-        verify(PayController).
+        
     }
 
     /**
@@ -95,11 +89,12 @@ public class PaystationControllerTest {
     @Test
     public void testTicketPaid() {
         System.out.println("ticketPaid");
-        
+        PayController.ticketInserted(barcode);
         PayController.ticketPaid();
         // TODO review the generated test code and remove the default call to fail.
         //fail("The test case is a prototype.");
-        assertTrue(testTicket.isPaid());
+
+        assertEquals(testTicket.isPaid(),true);
         
     }
 
@@ -109,7 +104,8 @@ public class PaystationControllerTest {
     @Test
     public void testTicketTaken() {
         System.out.println("ticketTaken");
-        
+        PayController.ticketInserted(barcode);
+        PayController.ticketPaid();
         PayController.ticketTaken();
         // TODO review the generated test code and remove the default call to fail.
         //fail("The test case is a prototype.");
