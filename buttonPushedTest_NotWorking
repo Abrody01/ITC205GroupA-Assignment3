@@ -109,8 +109,9 @@ import bcccp.tickets.season.UsageRecordFactory;
 		@Test
 		/*
 		 * carpark not full, car arrives and pushes button
+		 * trying to verify that the AdhocTicektFactory.make() is acctually called
 		 */
-		public void testButtonPushed() {
+		public void testButtonPushed1() {
 			os.manuallySetCarAtGate();
 			sut.carEventDetected(os.getId(), true);
 			assertEquals("WAITING", sut.getSTATE().toString());
@@ -118,7 +119,43 @@ import bcccp.tickets.season.UsageRecordFactory;
 			assertEquals(cp.isFull(), false);
 			verify(adhoc2).createTicket(Mockito.anyString());
 			verify(adhocTicketFactory).make(Mockito.anyString(),  Mockito.anyInt());
+		}
+		
+		@Test
+		/*
+		 * carpark not full, car arrives and pushes button
+		 * proving ticket is made by comparing how many current tickets are in the system before the
+		 * button is pushed vs after the button is pushed. 
+		 * This test does not actually prove that you made and issued a ticket, just that the ticektNo has incremented 
+		 * looking at the println outputs we can see that this test is not perfoming as expected
+		 */
+		public void testButtonPushed() {
+			//check how many tickets in current ticket list before button pushed
+			System.out.println("before button pushed " + adhoc.getCurrentTickets().size());
 			
+			os.manuallySetCarAtGate();
+			sut.carEventDetected(os.getId(), true);
+			assertEquals("WAITING", sut.getSTATE().toString());
+			sut.buttonPushed();
+			
+			//check how many tickets in current ticket list after button pushed
+			System.out.println("after button pushed " + adhoc.getCurrentTickets().size());
+			
+			assertEquals(cp.isFull(), false);
+			assertEquals(adhoc.getCurrentTickets().size(), ticketNo++);	
+			assertEquals("ISSUED", sut.getSTATE());
+		}
+		
+		@Test
+		/*
+		* Carpark not in the correct state and customer pushes button
+		*/
+		public void testButtonPushedWrongState() {
+			sut.carEventDetected(os.getId(), true);
+			assertEquals("IDLE", sut.getSTATE().toString());
+			sut.buttonPushed();
+			assertEquals(cp.isFull(), false);
+			assertNotEquals(adhoc.getCurrentTickets().size(), ticketNo++);
 			
 		}
 	}
