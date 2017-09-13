@@ -34,7 +34,11 @@ public class PaystationController
 		System.out.println("EntryController : " + message);
 	}
 
-	
+	public String getState(){
+            
+        return state_.toString();
+        
+        }
 	
 	private void setState(STATE newState) {
 		switch (newState) {
@@ -52,8 +56,8 @@ public class PaystationController
 			break;
 			
 		case REJECTED: 
-			state_ = STATE.WAITING;
-			log("setState: WAITING");
+			state_ = STATE.REJECTED;
+			log("setState: REJECTED");
 			break;
 			
 		case PAID: 
