@@ -10,6 +10,9 @@ import org.mockito.Mockito;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import bcccp.carpark.CarSensor;
 import bcccp.carpark.Carpark;
@@ -78,7 +81,6 @@ import bcccp.tickets.season.UsageRecordFactory;
 			ui = mock(IEntryUI.class);
 			
 			adhocTicketFactory = mock(IAdhocTicketFactory.class);
-			adhoc2 = mock(IAdhocTicketDAO.class);
 			
 			os = new CarSensor("os", 0, 0);
 			is = new CarSensor("is", 0 ,0);
@@ -88,7 +90,7 @@ import bcccp.tickets.season.UsageRecordFactory;
 			
 			os.registerResponder(sut);
 			is.registerResponder(sut);
-			carpark.register(sut);
+			cp.register(sut);
 			ui.registerController(sut);
 		}
 
@@ -106,7 +108,7 @@ import bcccp.tickets.season.UsageRecordFactory;
 		
 	
 		
-		@Test
+		
 		/*
 		 * carpark not full, car arrives and pushes button
 		 * trying to verify that the AdhocTicektFactory.make() is acctually called
@@ -117,16 +119,16 @@ import bcccp.tickets.season.UsageRecordFactory;
 			assertEquals("WAITING", sut.getSTATE().toString());
 			sut.buttonPushed();
 			assertEquals(cp.isFull(), false);
-			verify(adhoc2).createTicket(Mockito.anyString());
 			verify(adhocTicketFactory).make(Mockito.anyString(),  Mockito.anyInt());
 		}
 		
-		@Test
+		
 		/*
 		 * carpark not full, car arrives and pushes button
 		 * proving ticket is made by comparing how many current tickets are in the system before the
 		 * button is pushed vs after the button is pushed. 
-		 * This test does not actually prove that you made and issued a ticket, just that the ticektNo has incremented 
+		 * This test appears to pass but does not
+		 * actually prove that you made and issued a ticket, just that the ticektNo has incremented 
 		 * looking at the println outputs we can see that this test is not perfoming as expected
 		 */
 		public void testButtonPushed() {
@@ -149,13 +151,55 @@ import bcccp.tickets.season.UsageRecordFactory;
 		@Test
 		/*
 		* Carpark not in the correct state and customer pushes button
+		* this test should fail but is currently passing
 		*/
 		public void testButtonPushedWrongState() {
-			sut.carEventDetected(os.getId(), true);
-			assertEquals("IDLE", sut.getSTATE().toString());
+			assertNotEquals("WAITING", sut.getSTATE().toString());
 			sut.buttonPushed();
-			assertEquals(cp.isFull(), false);
-			assertNotEquals(adhoc.getCurrentTickets().size(), ticketNo++);
+			verify(ui).beep(); 
 			
 		}
+		
+		/*
+		 * controller in WAITING state, prove first thing done is check 
+		 * carpark is full or not
+		 */
+		@Test
+		public void buttonPushedChecksCapacity() {
+			os.manuallySetCarAtGate();
+			sut.carEventDetected(os.getId(), true);
+			assertEquals("WAITING", sut.getSTATE().toString());
+			sut.buttonPushed();
+			//verify(carpark).isFull();
+		}
+		
+		/*
+		 * carpark full, display message and change state to FULL
+		 */
+		@Test
+		public void buttonPushedCarparkFull() {
+			cp.recordAdhocTicketEntry();//now carpark is full
+			os.manuallySetCarAtGate();
+			sut.carEventDetected(os.getId(), true);
+			assertEquals("WAITING", sut.getSTATE().toString());
+			sut.buttonPushed();
+			assertEquals(true, cp.isFull());
+			assertEquals("FULL", sut.getSTATE().toString());
+			verify(ui).display((contains("Carpark Full")));			
+		}
+		
+		/*
+		 * Test for ticketInserted 
+		 * controller must be in the waiting state or 'beep'
+		 * 
+		 */
+		
+		@Test
+		public void ticketInsertedWrongState() {
+			assertNotEquals("WAITING", sut.getSTATE().toString());
+			sut.ticketInserted(testTicket.getBarcode());
+			verify(ui).beep();			
+		}
+		
+		
 	}
