@@ -1,0 +1,102 @@
+import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import bcccp.carpark.CarSensor;
+import bcccp.carpark.Carpark;
+import bcccp.carpark.ICarSensor;
+import bcccp.carpark.IGate;
+import bcccp.carpark.entry.EntryController;
+import bcccp.carpark.entry.IEntryController;
+import bcccp.carpark.entry.IEntryUI;
+import bcccp.carpark.paystation.PaystationController;
+import bcccp.tickets.adhoc.AdhocTicketDAO;
+import bcccp.tickets.adhoc.AdhocTicketFactory;
+import bcccp.tickets.adhoc.IAdhocTicket;
+import bcccp.tickets.adhoc.IAdhocTicketDAO;
+import bcccp.tickets.adhoc.IAdhocTicketFactory;
+import bcccp.tickets.season.ISeasonTicketDAO;
+import bcccp.tickets.season.SeasonTicketDAO;
+import bcccp.tickets.season.UsageRecordFactory;
+
+	
+
+
+	public class testEntryControllerWithNulls {	
+		
+		EntryController sut;
+		ICarSensor os;
+		ICarSensor is;
+		IAdhocTicketFactory adhocTicketFactory;
+		ICarSensor carSensor;
+		IGate gate;
+		IEntryUI ui;
+		EntryController mm;
+		Carpark carpark;
+		String carparkId; 
+		int ticketNo; 
+		String barcode;		
+		IAdhocTicket testTicket;
+	    IAdhocTicketDAO adhoc;
+	    ISeasonTicketDAO season;
+	    Carpark cp;
+	    PaystationController PayController;
+		
+		
+		
+		@Before
+		public void setUp() throws Exception {
+			
+			season = new SeasonTicketDAO(new UsageRecordFactory());
+	        adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
+	        
+	        cp = new Carpark("TestCarPark", 1, adhoc, season);      
+	        testTicket = cp.issueAdhocTicket();
+	        
+			carpark = mock(Carpark.class);
+			is = mock(ICarSensor.class);
+			os = mock(ICarSensor.class);
+			gate = mock(IGate.class);
+			ui = mock(IEntryUI.class);
+			adhocTicketFactory = mock(IAdhocTicketFactory.class);
+			
+			os = new CarSensor("os", 0, 0);
+			is = new CarSensor("is", 0 ,0);
+			
+			
+		}
+
+		@After
+		public void tearDown() throws Exception {
+			sut = null;
+		}
+		
+		@Test(expected=RuntimeException.class)
+		public void testForNullException1() {			
+			sut = new EntryController(null, gate, os, is, ui);			
+		}	
+		
+		@Test(expected=RuntimeException.class)
+		public void testForNullException2() {			
+			sut = new EntryController(cp, null, os, is, ui);			
+		}
+		
+		@Test(expected=RuntimeException.class)
+		public void testForNullException3() {			
+			sut = new EntryController(cp, gate, null, is, ui);			
+		}
+		
+		@Test(expected=RuntimeException.class)
+		public void testForNullException4() {			
+			sut = new EntryController(cp, gate, os, null, ui);			
+		}
+	
+		@Test(expected=RuntimeException.class)
+		public void testForNullException5() {			
+			sut = new EntryController(cp, gate, os, is, null);			
+		}
+	
+	}
+	
