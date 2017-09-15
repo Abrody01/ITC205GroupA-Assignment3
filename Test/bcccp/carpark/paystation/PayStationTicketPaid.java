@@ -32,7 +32,7 @@ import org.mockito.junit.MockitoJUnitRunner;
  */
 public class PayStationTicketPaid {
      
-    String barcode;
+    
     IAdhocTicket testTicket;
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
@@ -52,7 +52,7 @@ public class PayStationTicketPaid {
         ui = mock(PaystationUI.class);      
         testTicket = mock(IAdhocTicket.class);
         
-        barcode = testTicket.getBarcode();
+        
         when(testTicket.getBarcode()).thenReturn("123ABC");
         when(cp.getAdhocTicket(testTicket.getBarcode())).thenReturn(testTicket);
         when(testTicket.isCurrent()).thenReturn(Boolean.TRUE);
