@@ -31,11 +31,12 @@ import org.mockito.junit.MockitoJUnitRunner;
  * @author Aaron
  */
 public class PayStationControllerConstructor {
-    String barcode;
-    IAdhocTicket testTicket;
-    IAdhocTicketDAO adhoc;
-    ISeasonTicketDAO season;
+    
+    
+    
+    
     ICarpark cp;
+   
     IPaystationUI ui;
     
     public PayStationControllerConstructor() {
@@ -46,10 +47,11 @@ public class PayStationControllerConstructor {
     @Before
     public void setUp() {
         
-        season = new SeasonTicketDAO(new UsageRecordFactory());
-        adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
-        ui = new PaystationUI(5,5);
-        cp = new Carpark("TestCarPark", 5, adhoc, season);      
+        
+        ui = mock(PaystationUI.class);
+        cp = mock(Carpark.class);
+        
+        
     }
     
     @After
@@ -70,21 +72,32 @@ public class PayStationControllerConstructor {
     
     @Test(expected=AssertionError.class)
     public void testControllerConstructorNullCarPark() {
-        System.out.println("Generating Paystation Controller");
+        System.out.println("Generating Paystation Controller Null Car Park");
 
         IPaystationController PayController;
         PayController = new PaystationController(null, ui);
+        
+        
+       fail("Should have thrown exception");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testControllerConstructorNullUi() {
+        System.out.println("Generating Paystation Controller Null UI");
+
+        IPaystationController PayController;
+        PayController = new PaystationController(cp, null);
         
         
         fail("Should have thrown exception");
     }
     
     @Test(expected=NullPointerException.class)
-    public void testControllerConstructorNullUi() {
-        System.out.println("Generating Paystation Controller");
+    public void testControllerConstructorNullall() {
+        System.out.println("Generating Paystation Controller Null both");
 
         IPaystationController PayController;
-        PayController = new PaystationController(cp, null);
+        PayController = new PaystationController(null, null);
         
         
         fail("Should have thrown exception");

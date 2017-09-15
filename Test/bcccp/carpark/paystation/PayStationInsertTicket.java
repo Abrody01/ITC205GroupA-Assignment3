@@ -35,10 +35,12 @@ public class PayStationInsertTicket {
     
     String barcode;
     IAdhocTicket testTicket;
+    IAdhocTicket paidTicket;
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
     ICarpark cp;
     PaystationController PayController;
+    IPaystationUI ui;
     
     public PayStationInsertTicket() {
         
@@ -48,14 +50,18 @@ public class PayStationInsertTicket {
     
     @Before
     public void setUp() {
-        season = new SeasonTicketDAO(new UsageRecordFactory());
-        adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
-          
-        cp = new Carpark("TestCarPark", 5, adhoc, season); 
+        cp = mock(Carpark.class);
+        ui = mock(PaystationUI.class);      
+        testTicket = mock(IAdhocTicket.class);
+        paidTicket = mock(IAdhocTicket.class);
         
-        testTicket = cp.issueAdhocTicket();
-       
-        barcode = testTicket.getBarcode();
+        when(testTicket.getBarcode()).thenReturn("123ABC");
+        when(paidTicket.isPaid()).thenReturn(Boolean.TRUE);
+        when(cp.getAdhocTicket(testTicket.getBarcode())).thenReturn(testTicket);
+        when(cp.getAdhocTicket(paidTicket.getBarcode())).thenReturn(paidTicket);
+        when(paidTicket.isCurrent()).thenReturn(Boolean.FALSE);
+        when(paidTicket.getBarcode()).thenReturn("CBA321");
+        when(testTicket.isPaid()).thenReturn(Boolean.FALSE);
         
         PayController = new PaystationController(cp, mock(PaystationUI.class));
         
@@ -72,13 +78,14 @@ public class PayStationInsertTicket {
     public void testTicketInserted() {
         System.out.println("ticketInserted");
         
-        PayController.ticketInserted(barcode);
+        PayController.ticketInserted(testTicket.getBarcode());
         
         assertEquals(PayController.getState(),"WAITING");
         
     }
     @Test
     public void testNullTicketInserted() {
+        //can also be used for unreadable ticket.
         System.out.println("ticketInserted");
         String testNull = "";
         PayController.ticketInserted(testNull);
@@ -86,15 +93,7 @@ public class PayStationInsertTicket {
         assertEquals(PayController.getState(),"REJECTED");
         
     }
-    @Test
-    public void testInvalidTicketInserted() {
-        System.out.println("ticketInserted");
-        String testInvalid = "12a5";
-        PayController.ticketInserted(testInvalid);
-        
-        assertEquals(PayController.getState(),"REJECTED");
-        
-    }
+    
     
     @Test(expected=AssertionError.class) 
     public void testTicketInsertedTwice() {
@@ -114,6 +113,17 @@ public class PayStationInsertTicket {
        
        PayController.ticketInserted(barcode);
         fail("Should have thrown exception");
+    }
+    
+    @Test
+    public void testPAIDTicketInserted() {
+        
+        System.out.println("ticketInserted");
+        String testNull = "";
+        PayController.ticketInserted(testNull);
+        
+        assertEquals(PayController.getState(),"REJECTED");
+        
     }
 
     

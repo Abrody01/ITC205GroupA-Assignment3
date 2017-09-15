@@ -37,7 +37,8 @@ public class PayStationTicketPaid {
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
     ICarpark cp;
-    PaystationController PayController;
+    IPaystationController PayController;
+    IPaystationUI ui;
     public PayStationTicketPaid() {
        
         
@@ -47,14 +48,17 @@ public class PayStationTicketPaid {
     
     @Before
     public void setUp() {
-        season = new SeasonTicketDAO(new UsageRecordFactory());
-        adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
-
-        cp = new Carpark("TestCarPark", 5, adhoc, season); 
-        testTicket = cp.issueAdhocTicket();
+        cp = mock(Carpark.class);
+        ui = mock(PaystationUI.class);      
+        testTicket = mock(IAdhocTicket.class);
+        
         barcode = testTicket.getBarcode();
-        PayController = new PaystationController(cp, mock(PaystationUI.class));
-        PayController.ticketInserted(barcode);
+        when(testTicket.getBarcode()).thenReturn("123ABC");
+        when(cp.getAdhocTicket(testTicket.getBarcode())).thenReturn(testTicket);
+        when(testTicket.isCurrent()).thenReturn(Boolean.TRUE);
+       
+        PayController = new PaystationController(cp, ui);
+        PayController.ticketInserted(testTicket.getBarcode());
         
     }
     
@@ -73,7 +77,6 @@ public class PayStationTicketPaid {
         PayController.ticketPaid();
         
         assertEquals(PayController.getState(),"PAID");
-        assertEquals(testTicket.isPaid(),true);
     }
     
    @Test

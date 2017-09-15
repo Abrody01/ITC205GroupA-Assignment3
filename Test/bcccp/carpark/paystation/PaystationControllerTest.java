@@ -35,11 +35,14 @@ public class PaystationControllerTest {
     
     //@Mock PaystationController PayController;
     String barcode;
+    String notBarcode;
     IAdhocTicket testTicket;
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
     ICarpark cp;
     PaystationController PayController;
+    IAdhocTicket notCurrent;
+    IPaystationUI ui;
             
     public PaystationControllerTest() {
         
@@ -51,66 +54,73 @@ public class PaystationControllerTest {
     
     @Before
     public void setUp() throws Exception {
-        season = new SeasonTicketDAO(new UsageRecordFactory());
-        adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
-        
-        cp = new Carpark("TestCarPark", 5, adhoc, season);      
-        testTicket = cp.issueAdhocTicket();
-        
+        cp = mock(Carpark.class);
+        ui = mock(PaystationUI.class);      
+        testTicket = mock(IAdhocTicket.class);
+        notCurrent = mock(IAdhocTicket.class);
+        notBarcode = notCurrent.getBarcode();
         barcode = testTicket.getBarcode();
+        when(testTicket.getBarcode()).thenReturn("123ABC");
+        when(notCurrent.isCurrent()).thenReturn(Boolean.TRUE);
+        when(cp.getAdhocTicket(testTicket.getBarcode())).thenReturn(testTicket);
+        when(notCurrent.isCurrent()).thenReturn(Boolean.FALSE);
+        when(notCurrent.getBarcode()).thenReturn("CBA321");
         
-        PayController = new PaystationController(cp, mock(PaystationUI.class));
+        PayController = new PaystationController(cp, ui);
         
     }
     
     @After
     public void tearDown() {
-        
+        testTicket = null;
         PayController = null;
+        barcode = null;
         
     }
 
-    /**
-     * Test of ticketInserted method, of class PaystationController.
-     */
+  
     @Test
-    public void testTicketInserted() {
-        System.out.println("ticketInserted");
-        
-        PayController.ticketInserted(barcode);
-        // TODO review the generated test code and remove the default call to fail.
-        //fail("The test case is a prototype.");
-        
-    }
-
-    /**
-     * Test of ticketPaid method, of class PaystationController.
-     */
-    @Test
-    public void testTicketPaid() {
+    public void testTicketNormalFlow(){
+        System.out.println("NormalFlow");
+        System.out.println("TicketInserted");
+        PayController.ticketInserted(testTicket.getBarcode());
+        assertEquals("WAITING",PayController.getState());
         System.out.println("ticketPaid");
-        PayController.ticketInserted(barcode);
-        
         PayController.ticketPaid();
-        // TODO review the generated test code and remove the default call to fail.
-        //fail("The test case is a prototype.");
-
-        assertEquals(testTicket.isPaid(),true);
-        
-    }
-
-    /**
-     * Test of ticketTaken method, of class PaystationController.
-     */
-    @Test
-    public void testTicketTaken() {
+        assertEquals("PAID",PayController.getState());
         System.out.println("ticketTaken");
-        PayController.ticketInserted(barcode);
-        PayController.ticketPaid();
         PayController.ticketTaken();
-        // TODO review the generated test code and remove the default call to fail.
-        //fail("The test case is a prototype.");
+        assertEquals("IDLE",PayController.getState());
+        System.out.println("norm-Flow-Complete");
+        
     }
+    @Test
+    public void testTicketAlternateFlow1(){
+        
+        System.out.println("Alt-Flow1");
+        PayController.ticketInserted("");
+        assertEquals("REJECTED",PayController.getState());
+        System.out.println("ticketTaken");
+        PayController.ticketTaken();
+        assertEquals("IDLE",PayController.getState());
+        
+        System.out.println("Alt-Flow1-Complete");
+    }
+    @Test
+    public void testTicketAlternateFlow2(){
+        
+        System.out.println("Alt-Flow2");
+        PayController.ticketInserted(notCurrent.getBarcode());
+        System.out.println(notCurrent.isPaid());
+        assertEquals("REJECTED",PayController.getState());
+                
+        PayController.ticketTaken();
+        assertEquals("IDLE",PayController.getState());
+        
+        System.out.println("Alt-Flow2-Complete");
+    }
+    
+    
     
     
     

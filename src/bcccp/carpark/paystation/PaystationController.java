@@ -78,10 +78,19 @@ public class PaystationController
 	public void ticketInserted(String barcode) {
 		if (state_ == STATE.IDLE) {
 			adhocTicket_ = carpark_.getAdhocTicket(barcode);
-			if (adhocTicket_ != null) {
+			if (adhocTicket_ != null){
+                            if(!adhocTicket_.isPaid()){
+                                
 				charge_ = carpark_.calculateAddHocTicketCharge(adhocTicket_.getEntryDateTime());
 				ui_.display("Pay " + String.format("%.2f", charge_));
 				setState(STATE.WAITING);
+                            }
+                            else{
+                                ui_.beep();
+				ui_.display("Ticket Already Paid");
+				setState(STATE.REJECTED);
+				log("ticketInserted: ticket is already paid");
+                            }
 			}
 			else {
 				ui_.beep();
