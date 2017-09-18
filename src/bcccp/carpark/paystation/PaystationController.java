@@ -23,7 +23,8 @@ public class PaystationController
 		
 		this.carpark_ = carpark;
 		this.ui_ = ui;
-		
+		 
+                
 		ui.registerController(this);		
 		setState(STATE.IDLE);		
 	}
@@ -31,11 +32,10 @@ public class PaystationController
 	
 	
 	private void log(String message) {
-		System.out.println("EntryController : " + message);
+		System.out.println("PaystationController : " + message);
 	}
 
 	public String getState(){
-            
         return state_.toString();
         
         }
