@@ -34,11 +34,13 @@ public class PayStationTicketPaid {
      
     
     IAdhocTicket testTicket;
+    IAdhocTicket rejectTicket;
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
     ICarpark cp;
     IPaystationController PayController;
     IPaystationUI ui;
+    
     public PayStationTicketPaid() {
        
         
@@ -51,8 +53,9 @@ public class PayStationTicketPaid {
         cp = mock(Carpark.class);
         ui = mock(PaystationUI.class);      
         testTicket = mock(IAdhocTicket.class);
+        rejectTicket = mock(IAdhocTicket.class);
         
-        
+        when(testTicket.getBarcode()).thenReturn("");
         when(testTicket.getBarcode()).thenReturn("123ABC");
         when(cp.getAdhocTicket(testTicket.getBarcode())).thenReturn(testTicket);
         when(testTicket.isCurrent()).thenReturn(Boolean.TRUE);
@@ -88,6 +91,16 @@ public class PayStationTicketPaid {
         
         assertEquals(PayController.getState(),"IDLE");
         
+    }
+    
+    @Test
+    public void testTicketPaidRejected() {
+        System.out.println("Test Rejected ticket");
+        
+        PayController.ticketTaken();
+        PayController.ticketInserted(rejectTicket.getBarcode());
+        PayController.ticketPaid();
+        assertEquals("REJECTED",PayController.getState());
     }
     
 }
