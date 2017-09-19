@@ -1,0 +1,85 @@
+import bcccp.carpark.CarSensor;
+import bcccp.carpark.Carpark;
+import bcccp.carpark.IGate;
+import bcccp.carpark.entry.EntryController;
+import bcccp.carpark.entry.IEntryUI;
+import bcccp.tickets.adhoc.AdhocTicket;
+import bcccp.tickets.adhoc.IAdhocTicket;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
+import org.junit.runners.MethodSorters;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+/**
+ *
+ * @author Collin McKeahnie
+ */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+public class TicketTakenTest {
+    
+            Carpark mockCarpark;
+            IGate mockGate;
+            CarSensor mockIS;
+            CarSensor mockOS;
+            IEntryUI mockUI;
+            IAdhocTicket mockTicket;
+            EntryController mockEntry;
+            
+    
+            
+    @Before
+	public void setUp() {
+            mockCarpark = mock(Carpark.class);
+            mockGate = mock(IGate.class);
+            mockIS = mock(CarSensor.class);
+            mockOS = mock(CarSensor.class);
+            mockUI = mock(IEntryUI.class);
+            mockTicket = mock(IAdhocTicket.class);
+            mockEntry = new EntryController(mockCarpark, mockGate, mockOS, mockIS, mockUI);
+            
+	}
+    
+    @Test    
+    public void initialisationTest() {
+        assertTrue(mockEntry instanceof EntryController);
+        assertTrue(mockIS instanceof CarSensor);
+        assertTrue(mockOS instanceof CarSensor);
+        assertEquals(mockEntry.getSTATE().toString(), "IDLE");
+    }
+    
+    @Test
+    public void testTicketTakenForAdhoc() {
+    	
+    	when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor"); 
+        mockEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        verify(mockUI).display((contains("Push Button")));
+        assertEquals(mockEntry.getSTATE().toString(), "WAITING");  
+		
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        mockEntry.buttonPushed();
+        verify(mockUI).display((contains("Take Ticket")));
+        assertEquals(mockEntry.getSTATE().toString(), "ISSUED");
+        
+        mockEntry.ticketTaken();
+        assertEquals(mockEntry.getSTATE().toString(), "TAKEN");
+        verify(mockUI).display((contains("Take Ticket")));
+        
+		verify(mockGate).raise();
+	}
+	
+	@Test
+	public void testTicketTakenForAdhocAlternateCausesBeep() {
+		assertNotEquals(mockEntry.getSTATE().toString(), "TAKEN");
+		mockEntry.ticketTaken();
+		verify(mockUI).beep();	
+	}
+}
