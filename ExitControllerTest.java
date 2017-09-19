@@ -85,6 +85,47 @@ public class ExitControllerTest {
         mockExit.carEventDetected("Exit Inside Sensor", false);
         assertEquals(mockExit.getState(), "EXITED");
     }
+
+    @Test
+    public void stateTransitionTestForSeason() {        
+        assertEquals(mockExit.getState(), "IDLE");  //checks initial state
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Exit Inside Sensor");      //sets up conditions necessary for transition from IDLE to WAITING
+        mockExit.carEventDetected("Exit Inside Sensor", true);
+        assertEquals(mockExit.getState(), "WAITING");
+                
+        when(mockExit.isAdhocTicket("Test")).thenReturn(false);
+        when(mockCarpark.isSeasonTicketValid("Test")).thenReturn(false);      //sets up conditions necessary for transition from WAITNG to REJECTED
+        when(mockCarpark.isSeasonTicketInUse("Test")).thenReturn(false);
+        when(mockIS.carIsDetected()).thenReturn(true);
+        mockExit.ticketInserted("Test");
+        System.out.println(mockExit.getState());
+        assertEquals(mockExit.getState(), "REJECTED");
+                
+        mockExit.setState(mockExit.state.valueOf("WAITING"));       //sets state back to WAITING and checks it
+        assertEquals(mockExit.getState(), "WAITING");
+        
+        when(mockExit.isAdhocTicket("Test")).thenReturn(false);
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockCarpark.isSeasonTicketValid("Test")).thenReturn(true);                  //sets up conditions necessary for transition from WAITING to PROCESSED
+        when(mockCarpark.isSeasonTicketInUse("Test")).thenReturn(true);
+        mockExit.ticketInserted("Test");
+        assertEquals(mockExit.getState(), "PROCESSED");
+        
+        mockExit.ticketTaken();
+        assertEquals(mockExit.getState(), "TAKEN");     //checks transition from PROCESSED to TAKEN
+        
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Exit Outside Sensor");      //sets up conditions necessary for transition from TAKEN to EXITING
+        mockExit.carEventDetected("Exit Outside Sensor", true);
+        assertEquals(mockExit.getState(), "EXITING");
+        
+        when(mockIS.carIsDetected()).thenReturn(false);
+        when(mockIS.getId()).thenReturn("Exit Inside Sensor");      //sets up conditions necessary for transition from EXITING to EXITED
+        mockExit.carEventDetected("Exit Inside Sensor", false);
+        assertEquals(mockExit.getState(), "EXITED");
+    }
     
     
     @Test(expected=AssertionError.class)
