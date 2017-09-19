@@ -23,6 +23,7 @@ public interface ICarpark {
 	public boolean isSeasonTicketInUse(String ticketId);
 	public void recordSeasonTicketEntry(String ticketId);
 	public void recordSeasonTicketExit(String ticketId);
+	public int getNumberOfCarsParked();
 
 
 }
