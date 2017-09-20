@@ -1,0 +1,307 @@
+import bcccp.carpark.CarSensor;
+import bcccp.carpark.Carpark;
+import bcccp.carpark.IGate;
+import bcccp.carpark.entry.EntryController;
+import bcccp.carpark.entry.IEntryUI;
+import bcccp.tickets.adhoc.AdhocTicket;
+import bcccp.tickets.adhoc.IAdhocTicket;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
+import org.junit.runners.MethodSorters;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+/**
+ *
+ * @author Collin McKeahnie
+ */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+public class EntryControllerTransitionTest {
+    
+            Carpark mockCarpark;
+            IGate mockGate;
+            CarSensor mockIS;
+            CarSensor mockOS;
+            IEntryUI mockUI;
+            IAdhocTicket mockTicket;
+            EntryController testEntry;
+            
+            
+            
+    @Before
+	public void setUp() {
+            mockCarpark = mock(Carpark.class);
+            mockGate = mock(IGate.class);
+            mockIS = mock(CarSensor.class);
+            mockOS = mock(CarSensor.class);
+            mockUI = mock(IEntryUI.class);
+            mockTicket = mock(IAdhocTicket.class);
+            testEntry = new EntryController(mockCarpark, mockGate, mockOS, mockIS, mockUI);
+            
+	}
+    
+    @Test    
+    public void initialisationTest() {
+        assertTrue(testEntry instanceof EntryController);
+        assertTrue(mockIS instanceof CarSensor);
+        assertTrue(mockOS instanceof CarSensor);
+        assertEquals(testEntry.getSTATE().toString(), "IDLE");
+    }
+    
+    @Test
+    public void transitionTestFromIDLEtoWAITING() {        
+    	
+    	assertEquals(testEntry.getSTATE().toString(), "IDLE");//verify initial state
+        
+    	//transition from IDLE to WAITING
+    	when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor"); 
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        verify(mockUI).display((contains("Push Button")));
+        assertEquals(testEntry.getSTATE().toString(), "WAITING"); //verify transition state        
+    }
+    
+    
+    @Test
+    public void transitionTestFromIDLEtoBLOCKED() {
+        //from IDLE to BLOCKED
+    	
+    	 assertEquals(testEntry.getSTATE().toString(), "IDLE");//verify initial state
+    	
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor"); 
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "BLOCKED");//verify transition state 
+        
+    }
+    
+    @Test
+    public void transitionTestFromWAITINGtoIDLE() {
+        //from WAITING to IDLE
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "WAITING"); //verify initial state  
+        
+        when(mockOS.carIsDetected()).thenReturn(false);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");    
+        testEntry.carEventDetected("Entry Outside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "IDLE");//verify transition state 
+        
+    }
+    
+    @Test
+    public void transitionTestFromWAITINGtoBLOCKED() {        
+        //from WAITING to BLOCKED
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");      
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "WAITING"); //verify initial state
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "BLOCKED");//verify transition state 
+    }
+    
+    @Test
+    public void transitionTestFromBLOCKEDtoIDLE() {        
+        //from BLOCKED to IDLE
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "BLOCKED");//verify initial state
+        
+        when(mockOS.carIsDetected()).thenReturn(false);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "IDLE");//verify transition state 
+    }
+    
+        
+    @Test
+    public void transitionTestFromBLOCKEDtoPreviousState() {   
+        //from BLOCKED to previous state
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "BLOCKED");//verify initial state
+        
+        when(mockIS.carIsDetected()).thenReturn(false);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "WAITING");//verify transition state     
+    }
+        
+    @Test
+    public void transitionTestFromTAKENtoIDLE() {
+        //from TAKEN to IDLE
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        testEntry.buttonPushed();
+        testEntry.ticketTaken();
+        assertEquals(testEntry.getSTATE().toString(), "TAKEN");//verify initial state
+        
+        when(mockOS.carIsDetected()).thenReturn(false);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "IDLE");//verify transition state
+    }
+     
+    @Test
+    public void transitionTestFromTAKENtoENTERING() {
+        //from TAKEN to ENTERING
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        testEntry.buttonPushed();
+        testEntry.ticketTaken();
+        assertEquals(testEntry.getSTATE().toString(), "TAKEN");//verify initial state
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERING");//verify transition state
+    }
+    
+    @Test
+    public void transitionTestFromENTERINGtoENTERED() {
+        //from ENTERING to ENTERED
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        testEntry.buttonPushed();
+        testEntry.ticketTaken();
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERING");//verify initial state;
+        
+        when(mockOS.carIsDetected()).thenReturn(false);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERED");//verify transition state
+    }
+    
+    @Test
+    public void transitionTestFromENTERINGtoTAKEN() {
+        //from ENTERING to TAKEN
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        testEntry.buttonPushed();
+        testEntry.ticketTaken();
+        
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERING");//verify initial state
+        
+        when(mockIS.carIsDetected()).thenReturn(false);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "TAKEN");//verify transition state
+    }
+    
+    @Test
+    public void transitionTestFromENTEREDtoIDLE() {
+        //from ENTERED to IDLE
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        testEntry.buttonPushed();
+        testEntry.ticketTaken();
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        when(mockOS.carIsDetected()).thenReturn(false);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERED");//verify initial state
+        
+        when(mockIS.carIsDetected()).thenReturn(false);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", false);
+        
+        when(mockGate.isRaised()).thenReturn(false);
+        assertEquals(testEntry.getSTATE().toString(), "IDLE");//verify transition state
+    }
+    
+    @Test
+    public void transitionTestFromENTEREDtoENTERING() {    
+        //from ENTERED to ENTERING
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        when(mockCarpark.issueAdhocTicket()).thenReturn(mockTicket);
+        testEntry.buttonPushed();
+        testEntry.ticketTaken();
+       
+        when(mockIS.carIsDetected()).thenReturn(true);
+        when(mockIS.getId()).thenReturn("Entry Inside Sensor");
+        testEntry.carEventDetected("Entry Inside Sensor", true);
+        
+        when(mockOS.carIsDetected()).thenReturn(false);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", false);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERED");//verify initial state
+        
+        when(mockOS.carIsDetected()).thenReturn(true);
+        when(mockOS.getId()).thenReturn("Entry Outside Sensor");
+        testEntry.carEventDetected("Entry Outside Sensor", true);
+        
+        assertEquals(testEntry.getSTATE().toString(), "ENTERING");//verify transition state
+        
+    }
+    
+  
+}
