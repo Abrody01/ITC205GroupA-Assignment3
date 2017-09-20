@@ -15,7 +15,9 @@ import bcccp.tickets.adhoc.AdhocTicketFactory;
 import bcccp.tickets.adhoc.IAdhocTicket;
 import bcccp.tickets.adhoc.IAdhocTicketDAO;
 import bcccp.tickets.adhoc.IAdhocTicketFactory;
+import bcccp.tickets.season.ISeasonTicket;
 import bcccp.tickets.season.ISeasonTicketDAO;
+import bcccp.tickets.season.SeasonTicket;
 import bcccp.tickets.season.SeasonTicketDAO;
 import bcccp.tickets.season.UsageRecordFactory;
 
@@ -39,6 +41,7 @@ public class EntryIntergrationTest {
     String barcode;
     String notBarcode;
     IAdhocTicket testTicket;
+    ISeasonTicket testSeason;
     IAdhocTicketDAO adhoc;
     ISeasonTicketDAO season;
     Carpark cp;
@@ -69,6 +72,15 @@ public class EntryIntergrationTest {
 		is.registerResponder(sut);
 		cp.register(sut);
 		ui.registerController(sut);
+		
+		testSeason = new SeasonTicket("test", "test cp", 
+				System.currentTimeMillis(),
+				System.currentTimeMillis()+1);
+		
+		
+		
+		
+		
 	}
 	
 	
@@ -262,4 +274,78 @@ public class EntryIntergrationTest {
         assertEquals(sut.getSTATE().toString(), "IDLE");
         //verify(ui).display((contains("Idle"))); //reverts to displaying idle on UI
 	}
+	
+	@Test
+	public void testSeasonTicketEntry() {
+		/*
+		 * System detects car
+		 * display push button
+		 * customer inserts season ticket
+		 * system checks the season ticket 
+		 * eject the ticket
+		 * display take ticket
+		 * customer takes ticket
+		 * raise barrier
+		 * car drives in
+		 * lower barrier
+		 * record ticket usage
+		 * decrement available spaces
+		 */
+		
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		numberOfCarsparked = cp.getNumberOfCarsParked();
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        season.registerTicket(testSeason);
+        sut.ticketInserted("test");
+        assertEquals(sut.getSTATE().toString(), "VALIDATED");
+        sut.ticketTaken();// customer takes ticket
+		
+        assertEquals(eGate.isRaised(), true);// raise barrier
+		assertEquals(sut.getSTATE().toString(), "TAKEN");
+		assertEquals(cp.isSeasonTicketInUse("test"), false); //season ticket not yet in carpark
+		sut.carEventDetected(is.getId(), true);// car drives in
+		assertEquals(sut.getSTATE().toString(), "ENTERING");
+		
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);
+        assertEquals(sut.getSTATE().toString(), "ENTERED");
+        sut.carEventDetected(is.getId(), false);
+        assertEquals(eGate.isRaised(), false); // lower barrier
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+        assertEquals(cp.getNumberOfCarsParked(), 0); // record ticket usage and increment cars parked
+		assertEquals(cp.isSeasonTicketInUse("test"), true); //season ticket now in carpark
+	}
+	
+	@Test
+	public void testSeasonTicketRejected() {
+		/*
+		 * System detects car
+		 * display push button
+		 * customer inserts season ticket
+		 * system checks the season ticket 
+		 * system rejects season ticket
+		 * System displays ‘Invalid ticket’ message
+		 * System displays ‘Remove Invalid Ticket’ message
+		 * display push button
+		 */
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		numberOfCarsparked = cp.getNumberOfCarsParked();
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        season.registerTicket(testSeason);
+        sut.ticketInserted("notARealTicket");
+        //verify(ui).display((contains("Invalid ticket"))); 
+        //verify(ui).display((contains("Remove Invalid Ticket"))); 
+        assertEquals(sut.getSTATE().toString(), "WAITING");
+        sut.ticketTaken();// customer takes ticket
+        verify(ui).display((contains("Push Button"))); 
+	}
+		
 }
