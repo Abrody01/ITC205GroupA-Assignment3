@@ -1,0 +1,79 @@
+import bcccp.carpark.CarSensor;
+import bcccp.carpark.Carpark;
+import bcccp.carpark.IGate;
+import bcccp.carpark.entry.EntryController;
+import bcccp.carpark.entry.IEntryUI;
+import bcccp.tickets.adhoc.AdhocTicket;
+import bcccp.tickets.adhoc.IAdhocTicket;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
+import org.junit.runners.MethodSorters;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+/**
+ *
+ * @author Collin McKeahnie
+ */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+public class EntryControllerConstructorTest {
+    
+            Carpark mockCarpark;
+            IGate mockGate;
+            CarSensor mockIS;
+            CarSensor mockOS;
+            IEntryUI mockUI;
+            IAdhocTicket mockTicket;
+            EntryController testEntry;
+            
+            
+            
+    @Before
+	public void setUp() {
+            mockCarpark = mock(Carpark.class);
+            mockGate = mock(IGate.class);
+            mockIS = mock(CarSensor.class);
+            mockOS = mock(CarSensor.class);
+            mockUI = mock(IEntryUI.class);
+            mockTicket = mock(IAdhocTicket.class);
+            testEntry = new EntryController(mockCarpark, mockGate, mockOS, mockIS, mockUI);
+            
+	}
+
+    
+	@Test(expected=AssertionError.class)
+    public void testNullConstructorParam1() {
+        testEntry = new EntryController(null, mockGate, mockIS, mockOS, mockUI);
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testNullConstructorParam2() {
+    	testEntry = new EntryController(mockCarpark, null, mockIS, mockOS, mockUI);
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testNullConstructorParam3() {
+    	testEntry = new EntryController(mockCarpark, mockGate, null, mockOS, mockUI);
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testNullConstructorParam4() {
+    	testEntry = new EntryController(mockCarpark, mockGate, mockIS, null, mockUI);
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testNullConstructorParam5() {
+    	testEntry = new EntryController(mockCarpark, mockGate, mockIS, mockOS, null);
+        fail("Exception should be thrown.");
+    }
+
+}

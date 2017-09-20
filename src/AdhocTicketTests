@@ -1,0 +1,106 @@
+import bcccp.carpark.CarSensor;
+import bcccp.carpark.Carpark;
+import bcccp.carpark.IGate;
+import bcccp.carpark.entry.EntryController;
+import bcccp.carpark.entry.IEntryUI;
+import bcccp.tickets.adhoc.AdhocTicket;
+import bcccp.tickets.adhoc.AdhocTicketDAO;
+import bcccp.tickets.adhoc.IAdhocTicket;
+import bcccp.tickets.adhoc.IAdhocTicketDAO;
+import bcccp.tickets.adhoc.IAdhocTicketFactory;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
+import org.junit.runners.MethodSorters;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+/**
+ *
+ * @author Collin McKeahnie
+ */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+public class AdhocTicketTests {
+    
+            Carpark mockCarpark;
+            IGate mockGate;
+            CarSensor mockIS;
+            CarSensor mockOS;
+            IEntryUI mockUI;
+            IAdhocTicket mockTicket;
+            EntryController mockEntry;
+            AdhocTicket ticket;
+            IAdhocTicketDAO mockTicketDAO;
+            IAdhocTicketFactory mockFactory;
+            
+    
+            
+    @Before
+	public void setUp() {
+            mockCarpark = mock(Carpark.class);
+            mockGate = mock(IGate.class);
+            mockIS = mock(CarSensor.class);
+            mockOS = mock(CarSensor.class);
+            mockUI = mock(IEntryUI.class);
+            mockTicket = mock(IAdhocTicket.class);
+            mockEntry = new EntryController(mockCarpark, mockGate, mockOS, mockIS, mockUI);
+            
+	}
+    
+    
+    
+    @Test(expected=AssertionError.class)
+    public void testNullConstructorParam1() {
+		ticket = new AdhocTicket(null, 1, "barcode");
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testNullConstructorIDzero() {
+		ticket = new AdhocTicket("Carpark", 0, "barcode");
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=AssertionError.class)
+    public void testNullConstructorParam3() {
+		ticket = new AdhocTicket("Carpark", 1, null);
+        fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testCreateTicketWithNull() {
+    	mockTicketDAO.createTicket(null);
+    	fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testCreateTicketWithEmpty() {
+    	mockTicketDAO.createTicket("");
+    	fail("Exception should be thrown.");
+    }
+    
+    @Test(expected=NullPointerException.class)
+    public void testMakeTicketWithNullParam1() {
+    	mockFactory.make(null, 1);
+    	fail("Exception should be thrown.");
+    }
+    	
+    @Test(expected=NullPointerException.class)
+    public void testMakeTicketWithEmptyParma1() {
+    	mockFactory.make("", 1);
+    	fail("Exception should be thrown.");
+    }	
+    
+    @Test(expected=NullPointerException.class)
+    public void testMakeTicketWithTicketNoZero() {
+    	mockFactory.make("test", 0);
+    	fail("Exception should be thrown.");
+    }	
+    
+}

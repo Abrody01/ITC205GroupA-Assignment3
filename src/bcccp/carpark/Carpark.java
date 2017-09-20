@@ -168,7 +168,10 @@ public class Carpark implements ICarpark {
 		return ticket.inUse();
 	}
 
-
+	@Override
+	public int getNumberOfCarsParked() {
+		return nParked;
+	}
 
 
 
