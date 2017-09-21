@@ -297,7 +297,9 @@ public class ExitController
 		
 	}
 
-
+	public String getState() {
+            return state.toString();
+        }
 
 
 	
