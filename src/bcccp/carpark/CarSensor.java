@@ -99,6 +99,8 @@ public class CarSensor extends JFrame implements ICarSensor {
 		return carDetected;
 	}
 	
-	
+	public void setCarDetected(Boolean carDetected) {
+            this.carDetected = carDetected;
+        }
 
 }
