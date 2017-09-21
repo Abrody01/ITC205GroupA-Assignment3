@@ -13,7 +13,7 @@ public class ExitController
 	
 	private enum STATE { IDLE, WAITING, PROCESSED, REJECTED, TAKEN, EXITING, EXITED, BLOCKED } 
 	
-	public STATE state;
+	private STATE state;
 	private STATE prevState;
 	private String message;
 	//private String prevMessage;
@@ -301,7 +301,9 @@ public class ExitController
             return state.toString();
         }
 
-
+	public void setTestState(String testState) {
+            setState(state.valueOf(testState));
+        }
 	
 
 }
