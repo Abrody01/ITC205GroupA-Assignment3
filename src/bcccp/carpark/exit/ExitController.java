@@ -13,7 +13,7 @@ public class ExitController
 	
 	private enum STATE { IDLE, WAITING, PROCESSED, REJECTED, TAKEN, EXITING, EXITED, BLOCKED } 
 	
-	private STATE state;
+	public STATE state;
 	private STATE prevState;
 	private String message;
 	//private String prevMessage;
