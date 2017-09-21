@@ -8,9 +8,11 @@ import bcccp.tickets.adhoc.AdhocTicket;
 import bcccp.tickets.adhoc.AdhocTicketDAO;
 import bcccp.tickets.adhoc.IAdhocTicketDAO;
 import bcccp.tickets.season.ISeasonTicketDAO;
+import bcccp.tickets.season.IUsageRecordFactory;
 import bcccp.tickets.season.SeasonTicket;
 import bcccp.tickets.season.SeasonTicketDAO;
 import bcccp.tickets.season.UsageRecord;
+import bcccp.tickets.season.UsageRecordFactory;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.when;
 public class ExitIntegrationTest {
     
     IGate testGate;
+    IUsageRecordFactory mockFactory;
     CarSensor testIS;
     CarSensor testOS; 
     ExitUI testUI;
@@ -36,7 +39,7 @@ public class ExitIntegrationTest {
     AdhocTicket  testAdhoc;
     SeasonTicket testSeason;
     IAdhocTicketDAO mockAdhocDAO;
-    ISeasonTicketDAO mockSeasonDAO;
+    ISeasonTicketDAO testSeasonDAO;
     ExitController testExit;
     String seasonTicketId, cParkName;
     UsageRecord mockRecord;
@@ -46,10 +49,11 @@ public class ExitIntegrationTest {
     public void setUp() {
         cParkName = "test name";
         cParkCap = 5;
+        mockFactory = mock(UsageRecordFactory.class);
         mockAdhocDAO = mock(AdhocTicketDAO.class);
-        mockSeasonDAO = mock(SeasonTicketDAO.class);
+        testSeasonDAO = new SeasonTicketDAO(mockFactory);
         mockRecord = mock(UsageRecord.class);
-        testCarpark = new Carpark(cParkName, cParkCap, mockAdhocDAO, mockSeasonDAO);
+        testCarpark = new Carpark(cParkName, cParkCap, mockAdhocDAO, testSeasonDAO);
         testGate = new Gate(0, 0);
         testIS = new CarSensor("test inside", 100, 100);
         testOS = new CarSensor("test outside", 200, 200);
@@ -57,6 +61,7 @@ public class ExitIntegrationTest {
         testAdhoc = new AdhocTicket(cParkName, 1, "Atest");
         testSeason = new SeasonTicket("test", cParkName, 1234, 4321);
         testExit = new ExitController(testCarpark, testGate, testIS, testOS, testUI);
+        testSeasonDAO.registerTicket(testSeason);
     }
     
     @Test
@@ -76,14 +81,15 @@ public class ExitIntegrationTest {
         assertEquals(testExit.getState(), "WAITING");
         verify(testUI).display("Insert Ticket");
         
-        when(mockSeasonDAO.findTicketById(testSeason.getId())).thenReturn(testSeason);
         testSeason.recordUsage(mockRecord);
         testExit.ticketInserted(testSeason.getId());
         assertEquals(testExit.getState(), "PROCESSED");
         
         testExit.ticketTaken();
         verify(testUI).display("Take Processed Ticket");
-        assertEquals(testExit.getState(), "TAKEN");     
+        assertEquals(testExit.getState(), "TAKEN");
+        
+        assertEquals(testGate.isRaised(), true);
         
         testOS.setCarDetected(true);
         testExit.carEventDetected(testOS.getId(), true);
@@ -92,6 +98,12 @@ public class ExitIntegrationTest {
         testIS.setCarDetected(false);
         testExit.carEventDetected(testIS.getId(), false);
         assertEquals(testExit.getState(), "EXITED");
+        
+        testOS.setCarDetected(false);
+        testExit.carEventDetected(testOS.getId(), false);
+        assertEquals(testExit.getState(), "IDLE");
+        
+        assertEquals(testGate.isRaised(), false);
     }
     
     @Test
@@ -110,7 +122,9 @@ public class ExitIntegrationTest {
         
         testExit.ticketTaken();
         verify(testUI).display("Take Processed Ticket");
-        assertEquals(testExit.getState(), "TAKEN");     
+        assertEquals(testExit.getState(), "TAKEN");
+        
+        assertEquals(testGate.isRaised(), true);
         
         testOS.setCarDetected(true);
         testExit.carEventDetected(testOS.getId(), true);
@@ -119,10 +133,16 @@ public class ExitIntegrationTest {
         testIS.setCarDetected(false);
         testExit.carEventDetected(testIS.getId(), false);
         assertEquals(testExit.getState(), "EXITED");
+        
+        testOS.setCarDetected(false);
+        testExit.carEventDetected(testOS.getId(), false);
+        assertEquals(testExit.getState(), "IDLE");
+        
+        assertEquals(testGate.isRaised(), false);
     }
     
     @Test
-    public void testAlternateFlowAdhoc() {          //test accurate detection of rejected adhoc ticket
+    public void testAlternateFlowAdhocRejected() {          //test accurate detection of rejected adhoc ticket
         assertEquals(testExit.getState(), "IDLE");  //checks initial state
         
         testIS.setCarDetected(true);
@@ -130,20 +150,18 @@ public class ExitIntegrationTest {
         assertEquals(testExit.getState(), "WAITING");
         
         when(mockAdhocDAO.findTicketByBarcode("Atest")).thenReturn(null);
-        testAdhoc.pay(1234, 1234);
         testExit.ticketInserted(testAdhoc.getBarcode());
         assertEquals(testExit.getState(), "REJECTED");
     }
     
     @Test
-    public void testAlternateFlowSeason() {          //test accurate detection of rejected season ticket
+    public void testAlternateFlowSeasonRejected() {          //test accurate detection of rejected season ticket
         assertEquals(testExit.getState(), "IDLE");  //checks initial state
         
         testIS.setCarDetected(true);
         testExit.carEventDetected(testIS.getId(), true);
         assertEquals(testExit.getState(), "WAITING");
         
-        when(mockSeasonDAO.findTicketById(testSeason.getId())).thenReturn(testSeason);
         testExit.ticketInserted(testSeason.getId());
         assertEquals(testExit.getState(), "REJECTED");
     }
@@ -156,7 +174,7 @@ public class ExitIntegrationTest {
         testExit.carEventDetected(testIS.getId(), true);
         assertEquals(testExit.getState(), "WAITING");
         
-        when(mockSeasonDAO.findTicketById(testSeason.getId())).thenReturn(null);
+        when(testSeasonDAO.findTicketById(testSeason.getId())).thenReturn(null);
         testExit.ticketInserted(testSeason.getId());
         assertEquals(testExit.getState(), "REJECTED");
     }
@@ -172,5 +190,16 @@ public class ExitIntegrationTest {
         when(mockAdhocDAO.findTicketByBarcode(testSeason.getId())).thenReturn(null);
         testExit.ticketInserted(testAdhoc.getBarcode());
         assertEquals(testExit.getState(), "REJECTED");
+    }
+    
+    @Test
+    public void testAlternateFlowBlocked() {
+        testIS.setCarDetected(true);
+        testExit.setTestState("PROCESSED");
+        assertEquals(testExit.getState(), "PROCESSED");
+        
+        testOS.setCarDetected(true);
+        testExit.carEventDetected(testOS.getId(), true);
+        assertEquals(testExit.getState(), "BLOCKED");
     }
 }
