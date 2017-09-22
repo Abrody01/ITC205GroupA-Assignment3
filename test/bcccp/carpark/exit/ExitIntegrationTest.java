@@ -14,6 +14,7 @@ import bcccp.tickets.season.SeasonTicketDAO;
 import bcccp.tickets.season.UsageRecord;
 import bcccp.tickets.season.UsageRecordFactory;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
@@ -48,7 +49,7 @@ public class ExitIntegrationTest {
     @Before
     public void setUp() {
         cParkName = "test name";
-        cParkCap = 5;
+        cParkCap = 1;
         mockFactory = mock(UsageRecordFactory.class);
         mockAdhocDAO = mock(AdhocTicketDAO.class);
         testSeasonDAO = new SeasonTicketDAO(mockFactory);
@@ -74,6 +75,9 @@ public class ExitIntegrationTest {
     
     @Test
     public void testNormalFlowSeason() {
+        testCarpark.recordSeasonTicketEntry(testSeason.getId());  //simulates the entry of a season ticket
+        assertEquals(testCarpark.isFull(), true);       //capacity is set to 1 for testing, so this should return true if entry was recorded properly
+        
         assertEquals(testExit.getState(), "IDLE");  //checks initial state
         testIS.setCarDetected(true);
         testExit.carEventDetected(testIS.getId(), true);
@@ -83,6 +87,8 @@ public class ExitIntegrationTest {
         
         testSeason.recordUsage(mockRecord);
         testExit.ticketInserted(testSeason.getId());
+        assertTrue(testCarpark.isSeasonTicketValid(testSeason.getId()));
+        assertTrue(testCarpark.isSeasonTicketInUse(testSeason.getId()));
         assertEquals(testExit.getState(), "PROCESSED");
         
         testExit.ticketTaken();
@@ -103,11 +109,17 @@ public class ExitIntegrationTest {
         testExit.carEventDetected(testOS.getId(), false);
         assertEquals(testExit.getState(), "IDLE");
         
+        assertFalse(testSeason.inUse());            //checks that the season ticket has had it's usage ended
+        assertEquals(testCarpark.isFull(), false);          //capacity is set to 1 for testing, so this should return false if exit was recorded properly
+        
         assertEquals(testGate.isRaised(), false);
     }
     
     @Test
     public void testNormalFlowAdhoc() {
+        testCarpark.recordAdhocTicketEntry();      //simulates the entry of an adhoc ticket
+        assertEquals(testCarpark.isFull(), true);       //capacity is set to 1 for testing, so this should return true if entry was recorded properly
+        
         assertEquals(testExit.getState(), "IDLE");  //checks initial state
         testIS.setCarDetected(true);
         testExit.carEventDetected(testIS.getId(), true);
@@ -116,8 +128,9 @@ public class ExitIntegrationTest {
         verify(testUI).display("Insert Ticket");            //checks state transition and message display
         
         when(mockAdhocDAO.findTicketByBarcode("Atest")).thenReturn(testAdhoc);
-        testAdhoc.pay(1234, 1234);
+        testAdhoc.pay(1234, 1234);                          //sets the test adhoc ticket to a PAID state
         testExit.ticketInserted(testAdhoc.getBarcode());
+        assertEquals(testAdhoc.isPaid(), true);                 //verify that the isPaid() method returns true
         assertEquals(testExit.getState(), "PROCESSED");
         
         testExit.ticketTaken();
@@ -138,6 +151,9 @@ public class ExitIntegrationTest {
         testExit.carEventDetected(testOS.getId(), false);
         assertEquals(testExit.getState(), "IDLE");
         
+        assertEquals(testCarpark.isFull(), false);          //capacity is set to 1 for testing, so this should return false if exit was recorded properly
+        
+        assertTrue(testAdhoc.getExitDateTime() != 0);       //checks that an exit time has been recorded
         assertEquals(testGate.isRaised(), false);
     }
     
