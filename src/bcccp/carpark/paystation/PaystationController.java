@@ -23,7 +23,8 @@ public class PaystationController
 		
 		this.carpark_ = carpark;
 		this.ui_ = ui;
-		
+		 
+                
 		ui.registerController(this);		
 		setState(STATE.IDLE);		
 	}
@@ -31,10 +32,13 @@ public class PaystationController
 	
 	
 	private void log(String message) {
-		System.out.println("EntryController : " + message);
+		System.out.println("PaystationController : " + message);
 	}
 
-	
+	public String getState(){
+        return state_.toString();
+        
+        }
 	
 	private void setState(STATE newState) {
 		switch (newState) {
@@ -52,8 +56,8 @@ public class PaystationController
 			break;
 			
 		case REJECTED: 
-			state_ = STATE.WAITING;
-			log("setState: WAITING");
+			state_ = STATE.REJECTED;
+			log("setState: REJECTED");
 			break;
 			
 		case PAID: 
@@ -74,10 +78,19 @@ public class PaystationController
 	public void ticketInserted(String barcode) {
 		if (state_ == STATE.IDLE) {
 			adhocTicket_ = carpark_.getAdhocTicket(barcode);
-			if (adhocTicket_ != null) {
+			if (adhocTicket_ != null){
+                            if(!adhocTicket_.isPaid()){
+                                
 				charge_ = carpark_.calculateAddHocTicketCharge(adhocTicket_.getEntryDateTime());
 				ui_.display("Pay " + String.format("%.2f", charge_));
 				setState(STATE.WAITING);
+                            }
+                            else{
+                                ui_.beep();
+				ui_.display("Ticket Already Paid");
+				setState(STATE.REJECTED);
+				log("ticketInserted: ticket is already paid");
+                            }
 			}
 			else {
 				ui_.beep();
