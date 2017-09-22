@@ -297,9 +297,13 @@ public class ExitController
 		
 	}
 
+	public String getState() {
+            return state.toString();
+        }
 
-
-
+	public void setTestState(String testState) {
+            setState(state.valueOf(testState));
+        }
 	
 
 }
