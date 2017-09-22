@@ -1,0 +1,351 @@
+import bcccp.carpark.CarSensor;
+import bcccp.carpark.Carpark;
+import bcccp.carpark.Gate;
+import bcccp.carpark.ICarSensor;
+import bcccp.carpark.ICarpark;
+import bcccp.carpark.IGate;
+import bcccp.carpark.entry.EntryController;
+import bcccp.carpark.entry.EntryUI;
+import bcccp.carpark.entry.IEntryUI;
+import bcccp.carpark.paystation.IPaystationUI;
+import bcccp.carpark.paystation.PaystationController;
+import bcccp.tickets.adhoc.AdhocTicket;
+import bcccp.tickets.adhoc.AdhocTicketDAO;
+import bcccp.tickets.adhoc.AdhocTicketFactory;
+import bcccp.tickets.adhoc.IAdhocTicket;
+import bcccp.tickets.adhoc.IAdhocTicketDAO;
+import bcccp.tickets.adhoc.IAdhocTicketFactory;
+import bcccp.tickets.season.ISeasonTicket;
+import bcccp.tickets.season.ISeasonTicketDAO;
+import bcccp.tickets.season.SeasonTicket;
+import bcccp.tickets.season.SeasonTicketDAO;
+import bcccp.tickets.season.UsageRecordFactory;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
+import org.junit.runners.MethodSorters;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+public class EntryIntergrationTest {
+	
+	
+	
+    String barcode;
+    String notBarcode;
+    IAdhocTicket testTicket;
+    ISeasonTicket testSeason;
+    IAdhocTicketDAO adhoc;
+    ISeasonTicketDAO season;
+    Carpark cp;
+    PaystationController PayController;
+    IAdhocTicket notCurrent;
+    IEntryUI ui;
+    ICarSensor os;
+	ICarSensor is;
+	EntryController sut;
+	IGate eGate;
+	int numberOfCarsparked;
+	
+	@Before
+	public void setUp() throws Exception {
+	//Builds all assets required for testing the various flows of the Pay for ticket use case 
+	
+		adhoc = new AdhocTicketDAO(new AdhocTicketFactory());
+		season = new SeasonTicketDAO(new UsageRecordFactory());
+		ui = mock(EntryUI.class);      
+		
+		cp = new Carpark("TestCarPark", 1, adhoc, season);      
+        os = new CarSensor("os", 0, 0);
+		is = new CarSensor("is", 0 ,0);
+		eGate = new Gate(1, 1);
+		sut = new EntryController(cp, eGate, os, is, ui);
+		
+		os.registerResponder(sut);
+		is.registerResponder(sut);
+		cp.register(sut);
+		ui.registerController(sut);
+		
+		testSeason = new SeasonTicket("test", "test cp", 
+				System.currentTimeMillis(),
+				System.currentTimeMillis()+1);
+		
+		
+		
+		
+		
+	}
+	
+	
+	@Test
+	public void testNormalFlow() {
+		/*
+		 * NORMAL FLOW
+		 * System detects car
+		 * display push button
+		 * customer pushes button
+		 * check space available 
+		 * issue ticket
+		 * display take ticket
+		 * customer takes ticket
+		 * raise barrier
+		 * car drives in
+		 * lower barrier
+		 * record ticket usage
+		 * decrement available spaces
+		 */
+		
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		numberOfCarsparked = cp.getNumberOfCarsParked();
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        sut.buttonPushed(); //customer pushes button
+        
+        assertEquals(cp.isFull(), false); //check space available 
+        //verify(cp).issueAdhocTicket();//issue ticket
+        verify(ui).display((contains("Take Ticket")));//display take ticket
+        assertEquals(sut.getSTATE().toString(), "ISSUED");
+		
+        sut.ticketTaken();// customer takes ticket
+		
+        assertEquals(eGate.isRaised(), true);// raise barrier
+		assertEquals(sut.getSTATE().toString(), "TAKEN");
+		
+		sut.carEventDetected(is.getId(), true);// car drives in
+		assertEquals(sut.getSTATE().toString(), "ENTERING");
+		
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);
+        assertEquals(sut.getSTATE().toString(), "ENTERED");
+        sut.carEventDetected(is.getId(), false);
+        assertEquals(eGate.isRaised(), false); // lower barrier
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+        assertEquals(cp.getNumberOfCarsParked(), 1); // record ticket usage and increment cars parked
+		
+	}
+	
+	@Test
+	public void testAlternatFlowCarparkFullCustomerWaits() {
+		/*
+		 * ALTERNATE FLOW
+		 * System detects car
+		 * display push button
+		 * customer pushes button
+		 * check space available (there is not)
+		 * customer waits at gate
+		 * someone exits the carpark
+		 * display push button
+		 * customer pushes button
+		 * check space available 
+		 * issue ticket
+		 * display take ticket
+		 * customer takes ticket
+		 * raise barrier
+		 * car drives in
+		 * lower barrier
+		 * record ticket usage
+		 * decrement available spaces
+		 */
+	
+		cp.recordAdhocTicketEntry(); //park one car so test carpark is at capacity
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		numberOfCarsparked = cp.getNumberOfCarsParked();
+		os.manuallySetCarAtGate();
+        
+		sut.carEventDetected(os.getId(), true);//car arrives
+        
+		assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        sut.buttonPushed(); //customer pushes button
+        
+        assertEquals(cp.isFull(), true); //check space available (none available)
+        //verify(cp).issueAdhocTicket();//issue ticket
+        verify(ui).display(contains("Carpark Full"));//display take ticket
+        assertEquals(sut.getSTATE().toString(), "FULL");//state set to FULL
+        
+        cp.recordAdhocTicketExit();//a car leaves the carpark
+        assertEquals(sut.getSTATE().toString(), "WAITING");
+        //verify(ui).display((contains("Push Button"))); //display push button     
+        sut.buttonPushed(); //customer pushes button
+        
+        assertEquals(cp.isFull(), false); //check space available 
+        //verify(cp).issueAdhocTicket();//issue ticket
+        verify(ui).display((contains("Take Ticket")));//display take ticket
+        assertEquals(sut.getSTATE().toString(), "ISSUED");
+		
+        sut.ticketTaken();// customer takes ticket
+		
+        assertEquals(eGate.isRaised(), true);// raise barrier
+		assertEquals(sut.getSTATE().toString(), "TAKEN");
+		
+		sut.carEventDetected(is.getId(), true);// car drives in
+		assertEquals(sut.getSTATE().toString(), "ENTERING");
+		
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);
+        assertEquals(sut.getSTATE().toString(), "ENTERED");
+        sut.carEventDetected(is.getId(), false);
+        assertEquals(eGate.isRaised(), false); // lower barrier
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+        assertEquals(cp.getNumberOfCarsParked(), 1); // record ticket usage and increment cars parked
+		
+	}
+	
+	@Test
+	public void testAlternatFlowCarparkFullCustomerLeaves() {
+		/*
+		 * ALTERNATE FLOW
+		 * System detects car
+		 * display push button
+		 * customer pushes button
+		 * check space available (there is not)
+		 * customer leaves
+		 */
+		
+		cp.recordAdhocTicketEntry(); //park one car so test carpark is at capacity
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        
+		assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        sut.buttonPushed(); //customer pushes button
+        
+        assertEquals(cp.isFull(), true); //check space available (none available)
+        os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);//car arrives
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+	}
+	
+	@Test
+	public void testAlternatFlowCustomerIsDetectedThenLeaves() {
+        /*
+         * System detects car
+		 * display push button
+		 * customer decides not to enter
+		 * 
+         */
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        
+		assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);//car leaves
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+        //verify(ui).display((contains("Idle"))); //reverts to displaying idle on UI
+	}
+	
+	@Test
+	public void testAlternatFlowCustomerPressButtonThenLeaves() {
+        /*
+         * System detects car
+		 * display push button
+		 * customer pushes button
+		 * customer decides not to enter
+		 * 
+         */
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        
+		assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        sut.buttonPushed(); //customer pushes button
+        verify(ui).display((contains("Take Ticket")));//display take ticket
+        assertEquals(sut.getSTATE().toString(), "ISSUED");
+        
+        os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);//car leaves
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+        //verify(ui).display((contains("Idle"))); //reverts to displaying idle on UI
+	}
+	
+	@Test
+	public void testSeasonTicketEntry() {
+		/*
+		 * System detects car
+		 * display push button
+		 * customer inserts season ticket
+		 * system checks the season ticket 
+		 * eject the ticket
+		 * display take ticket
+		 * customer takes ticket
+		 * raise barrier
+		 * car drives in
+		 * lower barrier
+		 * record ticket usage
+		 * decrement available spaces
+		 */
+		
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		numberOfCarsparked = cp.getNumberOfCarsParked();
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        season.registerTicket(testSeason);
+        sut.ticketInserted("test");
+        assertEquals(sut.getSTATE().toString(), "VALIDATED");
+        sut.ticketTaken();// customer takes ticket
+		
+        assertEquals(eGate.isRaised(), true);// raise barrier
+		assertEquals(sut.getSTATE().toString(), "TAKEN");
+		assertEquals(cp.isSeasonTicketInUse("test"), false); //season ticket not yet in carpark
+		sut.carEventDetected(is.getId(), true);// car drives in
+		assertEquals(sut.getSTATE().toString(), "ENTERING");
+		
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), false);
+        assertEquals(sut.getSTATE().toString(), "ENTERED");
+        sut.carEventDetected(is.getId(), false);
+        assertEquals(eGate.isRaised(), false); // lower barrier
+        assertEquals(sut.getSTATE().toString(), "IDLE");
+        assertEquals(cp.getNumberOfCarsParked(), 0); // record ticket usage and increment cars parked
+		assertEquals(cp.isSeasonTicketInUse("test"), true); //season ticket now in carpark
+	}
+	
+	@Test
+	public void testSeasonTicketRejected() {
+		/*
+		 * System detects car
+		 * display push button
+		 * customer inserts season ticket
+		 * system checks the season ticket 
+		 * system rejects season ticket
+		 * System displays ‘Invalid ticket’ message
+		 * System displays ‘Remove Invalid Ticket’ message
+		 * display push button
+		 */
+		assertEquals(sut.getSTATE().toString(), "IDLE");//verify initial state
+		numberOfCarsparked = cp.getNumberOfCarsParked();
+		os.manuallySetCarAtGate();
+        sut.carEventDetected(os.getId(), true);//car arrives
+        assertEquals(sut.getSTATE().toString(), "WAITING");//System detects car
+        verify(ui).display((contains("Push Button"))); //display push button
+        
+        season.registerTicket(testSeason);
+        sut.ticketInserted("notARealTicket");
+        //verify(ui).display((contains("Invalid ticket"))); 
+        //verify(ui).display((contains("Remove Invalid Ticket"))); 
+        assertEquals(sut.getSTATE().toString(), "WAITING");
+        sut.ticketTaken();// customer takes ticket
+        verify(ui).display((contains("Push Button"))); 
+	}
+		
+}
